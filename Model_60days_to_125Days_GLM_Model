@@ -1,0 +1,60 @@
+library(ggplot2)
+library(mgcv)
+getwd()
+setwd("path) 
+
+df <- read.csv("doc.csv", sep=";")
+
+df$Trataments <- as.factor(df$Trataments)
+df
+str(df)
+
+# Garantir que Trataments é fator e reordenar os níveis
+df$Trataments <- factor(df$Trataments, levels = c("Amb","Elev","Temp", "Drought","ElevTemp","ElevDrought" ))
+
+# Modelo com interação entre Biomassa e Tratamentos
+modelo <- glm(Aminoacids ~ TotalBiomass60Days:Trataments, data = df, family = Gamma(link = "identity"))
+
+# Sumário do modelo
+summary(modelo)
+
+# FAZER PREDICAO SOMENTE POR TRATAMENTO
+df_amb <- subset(df, Trataments == "ElevDrought")
+valores_preditos <- predict(modelo, newdata = df_amb, type = "response")
+valores_observados <- df_amb$Aminoacids
+
+tamanho_amostra <- length(valores_observados)
+
+# VALORES OBSERVADOR
+# Calcular a média
+media <- mean(valores_observados)
+media
+
+# Calcular o desvio padrão
+desvio_padrao <- sd(valores_observados)
+desvio_padrao
+
+# Calcular o erro padrão da média
+erro_media <- desvio_padrao / sqrt(tamanho_amostra)
+erro_media
+
+media <- mean(valores_preditos)
+media
+
+# Calcular o desvio padrão
+desvio_padrao <- sd(valores_preditos)
+desvio_padrao
+
+# Calcular o erro padrão da média
+erro_media <- desvio_padrao / sqrt(tamanho_amostra)
+erro_media
+
+# Calcular o erro quadrático  RMSE
+erro_quadratico <- (valores_observados - valores_preditos) ^ 2
+
+# Calcular a média dos erros quadráticos
+media_erro_quadratico <- mean(erro_quadratico)
+
+# Calcular o RMSE
+rmse <- sqrt(media_erro_quadratico)
+rmse
