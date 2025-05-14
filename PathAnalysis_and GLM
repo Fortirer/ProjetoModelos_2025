@@ -1,0 +1,170 @@
+library(ggplot2)
+#install.packages("mgcv")
+library(mgcv)
+getwd()
+setwd("C:/Users/LAFIECO/Documents/Doutorado_GDrive/PhD/Soybean_Paper1/DadosModeloGLM") 
+
+df <- read.csv("SojaModelagemSample.csv", sep=";") # dados com temp abortado
+
+
+#df = df[df$Trataments == "Elev",]
+df$Trataments <- as.factor(df$Trataments)
+df
+str(df)
+
+
+# Garantir que Trataments é fator e reordenar os níveis
+df$Trataments <- factor(df$Trataments, levels = c("Amb","Elev","Temp", "Drought","ElevTemp","ElevDrought" ))
+
+
+# Modelo com interação entre Biomassa e Tratamentos
+modelo <- glm(Aminoacids ~ TotalBiomass60Days:Trataments, data = df, family = Gamma(link = "identity"))
+
+
+# Sumário do modelo
+summary(modelo)
+
+
+# FAZER PREDICAO SOMENTE DO TRATAMENTO AMB
+df_amb <- subset(df, Trataments == "ElevDrought")
+valores_preditos <- predict(modelo, newdata = df_amb, type = "response")
+valores_observados <- df_amb$Aminoacids
+
+# Calcular o tamanho da amostra
+tamanho_amostra <- length(valores_observados)
+
+
+# VALORES OBSERVADOR
+# Calcular a média
+media <- mean(valores_observados)
+media
+
+# Calcular o desvio padrão
+desvio_padrao <- sd(valores_observados)
+desvio_padrao
+
+# Calcular o erro padrão da média
+erro_media <- desvio_padrao / sqrt(tamanho_amostra)
+erro_media
+
+# calcular os valores preditos
+#valores_preditos <- predict(modelo, type = "response")
+# Calcular os valores observados
+#valores_observados <- df$Grain #### trocar de acordo com avariavel resposta dependente do modelo
+
+# VALORES PREDITOS
+# Calcular a média
+media <- mean(valores_preditos)
+media
+
+# Calcular o desvio padrão
+desvio_padrao <- sd(valores_preditos)
+desvio_padrao
+
+# Calcular o erro padrão da média
+erro_media <- desvio_padrao / sqrt(tamanho_amostra)
+erro_media
+
+# Calcular o erro quadrático  RMSE
+erro_quadratico <- (valores_observados - valores_preditos) ^ 2
+
+# Calcular a média dos erros quadráticos
+media_erro_quadratico <- mean(erro_quadratico)
+
+# Calcular o RMSE
+rmse <- sqrt(media_erro_quadratico)
+rmse
+
+# Calcular o R² manualmente
+SSE <- sum((valores_observados - valores_preditos)^2)  # Soma dos erros quadráticos (residuais)
+SST <- sum((valores_observados - mean(valores_observados))^2)  # Soma total dos quadrados
+
+R2 <- 1 - (SSE / SST)
+R2
+
+
+######################
+# MODELO COM INTERACAO
+#####################
+
+df <- read.csv("SojaModelagemSample.csv", sep=";")
+
+
+
+str(df)
+df$Trataments <- as.factor(df$Trataments)
+# Selecionar dois tratamentos específicos
+df <- subset(df, Trataments %in% c("ElevDrought", "ElevTemp"))
+
+
+df
+
+df$Temp_Drought_Interaction <- as.integer(df$Trataments %in% c("ElevDrought", "ElevTemp"))
+df
+str(df)
+#df$Dro <- as.integer(df$Trataments %in% c('AmbDrought'))
+df$Trataments
+
+# Converte categorica coluna para numericaca
+for (column in names(df)[sapply(df, is.factor)]) {
+  df[[column]] <- as.integer(as.numeric(df[[column]]))
+}
+
+modelo <- glm(Aminoacids ~ TotalBiomass60Days:Temp_Drought_Interaction, data = df, family='Gamma'(link='identity')) #identity
+#modelo <- glm(Grain ~ Temp_Drought_Interaction-1, data = df, family='Gamma'(link='identity')) #identity
+
+summary(modelo)
+
+valores_preditos <- predict(modelo, type = "response")
+# Calcular os valores observados
+valores_observados <- df$Grain
+
+# Calcular o tamanho da amostra
+tamanho_amostra <- length(valores_observados)
+
+# VALORES OBSERVADOR
+# Calcular a média
+media <- mean(valores_observados)
+media
+
+# Calcular o desvio padrão
+desvio_padrao <- sd(valores_observados)
+desvio_padrao
+
+# Calcular o erro padrão da média
+erro_media <- desvio_padrao / sqrt(tamanho_amostra)
+erro_media
+
+# VALORES PREDITOS
+# Calcular a média
+media <- mean(valores_preditos)
+media
+
+# Calcular o desvio padrão
+desvio_padrao <- sd(valores_preditos)
+
+desvio_padrao
+
+# Calcular o erro padrão da média
+erro_media <- desvio_padrao / sqrt(tamanho_amostra)
+erro_media
+
+# Calcular o erro quadrático  RMSE
+erro_quadratico <- (valores_observados - valores_preditos) ^ 2
+
+# Calcular a média dos erros quadráticos
+media_erro_quadratico <- mean(erro_quadratico)
+
+# Calcular o RMSE
+rmse <- sqrt(media_erro_quadratico)
+rmse
+
+# Calcular R² manualmente
+SSE <- sum((y - valores_preditos)^2)  # Soma dos erros quadráticos (residuais)
+SST <- sum((y - mean(y))^2)  # Soma total dos quadrados
+
+R2 <- 1 - (SSE / SST)
+R2
+
+
+
