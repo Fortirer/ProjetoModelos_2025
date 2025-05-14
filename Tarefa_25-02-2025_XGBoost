@@ -1,0 +1,130 @@
+# Instalar e carregar pacotes necessários
+install.packages("xgboost")
+install.packages("Matrix")
+install.packages("caret")
+
+library(xgboost)
+library(Matrix)
+library(caret)
+
+# Definir diretório de trabalho (se necessário)
+setwd("C:/Users/LAFIECO/Documents/Doutorado_GDrive/PhD/Soybean_Paper1/DadosModeloGLM") 
+
+# Carregar os dados
+df <- read.csv("SojaModelagemSample.csv", sep=";")
+
+# Selecionar os tratamentos de interesse
+df <- subset(df, Trataments %in% c("ElevTemp","ElevDrought"))
+
+str(df)
+# Converter variável categórica para numérica (one-hot encoding)
+df$Trataments <- as.factor(df$Trataments)
+df$Trataments <- as.integer(df$Trataments)  # Converte para valores numéricos
+
+# Separar variáveis preditoras (X) e resposta (y)
+X <- as.matrix(df[, c("TotalBiomass125Days", "Trataments")])  # Seleciona apenas as colunas numéricas
+y <- df$Grain
+
+# Criar a matriz no formato esperado pelo XGBoost
+dtrain <- xgb.DMatrix(data = X, label = y)
+
+# Definir hiperparâmetros do modelo
+param <- list(
+  objective = "reg:squarederror",  # Regressão com erro quadrático médio
+  eval_metric = "rmse",            # Usar RMSE como métrica de avaliação
+  max_depth = 6,                    # Profundidade máxima da árvore
+  eta = 0.1,                         # Taxa de aprendizado
+  nrounds = 100                      # Número de iterações (épocas)
+)
+
+# Treinar o modelo XGBoost
+modelo_xgb <- xgb.train(params = param, data = dtrain, nrounds = param$nrounds)
+
+
+valores_observados <- df$Grain #### trocar de acordo com avariavel resposta dependente do modelo
+mean(valores_observados)
+# Calcular o tamanho da amostra
+tamanho_amostra <- length(valores_observados)
+
+# Calcular o desvio padrão
+desvio_padrao <- sd(valores_observados)
+desvio_padrao
+
+# Calcular o erro padrão da média
+erro_media <- desvio_padrao / sqrt(tamanho_amostra)
+erro_media
+
+
+# Fazer previsões
+valores_preditos <- predict(modelo_xgb, dtrain)
+mean <- mean(valores_preditos)
+mean
+
+# Calcular o desvio padrão
+desvio_padrao <- sd(valores_preditos)
+desvio_padrao
+
+# Calcular o erro padrão da média
+erro_media <- desvio_padrao / sqrt(tamanho_amostra)
+erro_media
+
+# Calcular o erro quadrático  RMSE
+erro_quadratico <- (valores_observados - valores_preditos) ^ 2
+
+# Calcular a média dos erros quadráticos
+media_erro_quadratico <- mean(erro_quadratico)
+
+# Calcular métricas de erro
+erro_quadratico <- (y - valores_preditos) ^ 2
+rmse <- sqrt(mean(erro_quadratico))  # Raiz do erro médio quadrático
+rmse
+
+# Calcular R² manualmente
+SSE <- sum((y - valores_preditos)^2)  # Soma dos erros quadráticos (residuais)
+SST <- sum((y - mean(y))^2)  # Soma total dos quadrados
+
+R2 <- 1 - (SSE / SST)
+R2
+
+# Load ggplot2 library
+library(ggplot2)
+
+# Create a dataframe for plotting
+df_plot <- data.frame(
+  Observed = y,
+  Predicted = valores_preditos
+)
+
+#teste
+# Calcular RMSE e R²
+SSE <- sum((df_plot$Observed - df_plot$Predicted)^2)  # Soma dos quadrados dos erros
+SST <- sum((df_plot$Observed - mean(df_plot$Observed))^2)  # Soma total dos quadrados
+R2 <- 1 - (SSE / SST)  # Coeficiente de determinação
+rmse <- sqrt(mean((df_plot$Observed - df_plot$Predicted)^2))  # Erro quadrático médio
+
+# Criar texto formatado
+metrics_text <- paste0("R² = ", round(R2, 3), "\nRMSE = ", round(rmse, 3))
+
+# Criar gráfico
+ggplot(df_plot, aes(x = Observed, y = Predicted)) +
+  geom_point(shape = 21, fill = "white", color = "black", size = 3, stroke = 1) +  # Pontos brancos com borda preta
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "black") +  # Linha de regressão preta
+  theme_minimal() +
+  labs(
+    title = expression(eCO[2]),
+    x = "Observed grain productions (g DW)",  # aCO₂ com 2 subscrito
+    y = "Predicted grain production (g DW)"
+  ) +
+  theme(
+    aspect.ratio = 1,  # Gráfico quadrado
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 1),  # Borda preta ao redor
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),  # Centralizar título
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14)
+  ) +
+  annotate("text", 
+           x = min(df_plot$Observed) * 1.05,  # Posição mais à esquerda
+           y = max(df_plot$Predicted) * 0.95,  # Posição mais acima
+           label = metrics_text, 
+           size = 3, hjust = 0, fontface = "bold")
+
